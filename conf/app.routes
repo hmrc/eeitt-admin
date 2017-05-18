@@ -1,3 +1,4 @@
 # microservice specific routes
 
-GET        /hello-world             uk.gov.hmrc.eeittadmin.controllers.MicroserviceHelloWorld.hello
+POST    /register             uk.gov.hmrc.eeittadmin.controllers.AuthController.register
+POST    /hello                uk.gov.hmrc.eeittadmin.controllers.AuthController.authenticate
