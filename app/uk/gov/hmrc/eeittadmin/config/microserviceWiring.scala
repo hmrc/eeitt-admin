@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 HM Revenue & Customs
+ * Copyright 2019 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,26 +16,43 @@
 
 package uk.gov.hmrc.eeittadmin
 
-import play.api.libs.ws.{WSAPI, WSRequest}
-import uk.gov.hmrc.play.audit.http.config.LoadAuditingConfig
+import com.typesafe.config.Config
+import play.api.{Configuration, Play}
+import play.api.libs.ws.WSAPI
+import uk.gov.hmrc.http.{HttpDelete, HttpGet, HttpPut}
+import uk.gov.hmrc.play.microservice.config.LoadAuditingConfig
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.auth.microservice.connectors.AuthConnector
 import uk.gov.hmrc.play.config.{AppName, RunMode, ServicesConfig}
-import uk.gov.hmrc.play.http.HeaderCarrier
-import uk.gov.hmrc.play.http.hooks.HttpHook
 import uk.gov.hmrc.play.http.ws._
+import uk.gov.hmrc.http.hooks.HttpHooks
+import uk.gov.hmrc.play.audit.http.HttpAuditing
+import uk.gov.hmrc.play.audit.http.config.AuditingConfig
 
-object WSHttp extends WSGet with WSPut with WSDelete with AppName {
-  override val hooks: Seq[HttpHook] = NoneRequired
+object WSHttp extends WSGet with WSPut with WSDelete with HttpGet with HttpPut with HttpDelete with Hooks with AppName {
+  override protected def appNameConfiguration: Configuration = Play.current.configuration
+  override protected def configuration: Option[Config] = Option(Play.current.configuration.underlying)
 }
 
 class MicroserviceAuditConnector(val wsApi: WSAPI) extends AuditConnector with RunMode {
   override lazy val auditingConfig = LoadAuditingConfig(s"auditing")
-  override def buildRequest(url: String)(implicit hc: HeaderCarrier): WSRequest = wsApi.url(url).withHeaders(hc.headers: _*)
+  override protected def mode = Play.current.mode
+  override protected def runModeConfiguration = Play.current.configuration
 }
 
-object MicroserviceAuthConnector extends AuthConnector with ServicesConfig {
+object MicroserviceAuthConnector extends AuthConnector with ServicesConfig with WSGet with WSPut with WSDelete with HttpGet with HttpPut with HttpDelete with Hooks with AppName {
   override val authBaseUrl = baseUrl("auth")
+  override protected def mode = Play.current.mode
+  override protected def runModeConfiguration = Play.current.configuration
+  override protected def configuration: Option[Config] = Option(Play.current.configuration.underlying)
+  override protected def appNameConfiguration: Configuration = Play.current.configuration
 }
 
+object MicroserviceAuditConnector extends AuditConnector {
+  lazy val auditingConfig: AuditingConfig = LoadAuditingConfig(s"auditing")
+}
 
+trait Hooks extends HttpHooks with HttpAuditing {
+  override val hooks = Seq(AuditingHook)
+  override lazy val auditConnector: AuditConnector = MicroserviceAuditConnector
+}

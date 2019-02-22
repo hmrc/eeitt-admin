@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 HM Revenue & Customs
+ * Copyright 2019 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,15 +33,13 @@ import reactivemongo.api.DefaultDB
 import uk.gov.hmrc.eeittadmin.controllers.AuthController
 import uk.gov.hmrc.eeittadmin.repositories.UserRespository
 import uk.gov.hmrc.eeittadmin.services.AuthService
-import uk.gov.hmrc.play.audit.filters.AuditFilter
-import uk.gov.hmrc.play.audit.http.config.ErrorAuditingSettings
 import uk.gov.hmrc.play.auth.controllers.AuthParamsControllerConfig
 import uk.gov.hmrc.play.auth.microservice.filters.AuthorisationFilter
 import uk.gov.hmrc.play.config.{AppName, ControllerConfig}
-import uk.gov.hmrc.play.filters.{NoCacheFilter, RecoveryFilter}
 import uk.gov.hmrc.play.graphite.GraphiteConfig
-import uk.gov.hmrc.play.health.AdminController
-import uk.gov.hmrc.play.http.logging.filters.LoggingFilter
+import uk.gov.hmrc.play.health.HealthController
+import uk.gov.hmrc.play.microservice.filters.{LoggingFilter, NoCacheFilter, RecoveryFilter, AuditFilter}
+import uk.gov.hmrc.play.microservice.config.ErrorAuditingSettings
 import uk.gov.hmrc.play.microservice.bootstrap.JsonErrorHandling
 
 import scala.concurrent.Future
@@ -138,7 +136,7 @@ trait ApplicationModule extends BuiltInComponents
     RecoveryFilter
   )
 
-  lazy val reactiveMongoComponent = new ReactiveMongoComponentImpl(configurationApp, applicationLifecycle)
+  lazy val reactiveMongoComponent = new ReactiveMongoComponentImpl(configurationApp.configuration, environment, applicationLifecycle)
 
   implicit lazy val db: () => DefaultDB = reactiveMongoComponent.mongoConnector.db
 
@@ -157,9 +155,9 @@ trait ApplicationModule extends BuiltInComponents
 
   // We need to create explicit AdminController and provide it into injector so Runtime DI could be able
   // to find it when endpoints in health.Routes are being called
-  lazy val adminController = new AdminController(configuration)
+  lazy val healthController = new HealthController(configuration,environment)
 
-  lazy val customInjector: Injector = new SimpleInjector(injector) + adminController + wsApi
+  lazy val customInjector: Injector = new SimpleInjector(injector) + healthController + wsApi
 
   lazy val healthRoutes: health.Routes = health.Routes
 
